@@ -6,7 +6,6 @@ import KlaviyoSwift
 public class KlaviyoFlutterPlugin: NSObject, FlutterPlugin, UNUserNotificationCenterDelegate { //, FlutterApplicationLifeCycleDelegate {
   private static let methodChannelName = "com.rightbite.denisr/klaviyo"
   private static let firebaseMessagingMethodChannelName = "plugins.flutter.io/firebase_messaging"
-  private static let flutterLocalNotificationsMethodChannelName = "dexterous.com/flutter/local_notifications"
     
   private let METHOD_UPDATE_PROFILE = "updateProfile"
   private let METHOD_INITIALIZE = "initialize"
@@ -15,7 +14,6 @@ public class KlaviyoFlutterPlugin: NSObject, FlutterPlugin, UNUserNotificationCe
   private let METHOD_HANDLE_PUSH = "handlePush"
   private let METHOD_GET_EXTERNAL_ID = "getExternalId"
   private let METHOD_RESET_PROFILE = "resetProfile"
-  private let GET_NOTIFICATION_APP_LAUNCH_DETAILS_METHOD = "getNotificationAppLaunchDetails"
 
   private let METHOD_SET_EMAIL = "setEmail"
   private let METHOD_GET_EMAIL = "getEmail"
@@ -32,13 +30,11 @@ public class KlaviyoFlutterPlugin: NSObject, FlutterPlugin, UNUserNotificationCe
   public static func register(with registrar: FlutterPluginRegistrar) {
     let messenger = registrar.messenger()
     let channel = FlutterMethodChannel(name: methodChannelName, binaryMessenger: messenger)
-    let flutterLocalNotificationsChannel = FlutterMethodChannel(name: flutterLocalNotificationsMethodChannelName, binaryMessenger: messenger)
 
     let instance = KlaviyoFlutterPlugin()
     instance._channel = FlutterMethodChannel(name: firebaseMessagingMethodChannelName, binaryMessenger: messenger)
 
     registrar.addMethodCallDelegate(instance, channel: channel)
-    // registrar.addMethodCallDelegate(instance, channel: flutterLocalNotificationsChannel)
     registrar.addApplicationDelegate(instance)
   }
 
@@ -200,13 +196,6 @@ public class KlaviyoFlutterPlugin: NSObject, FlutterPlugin, UNUserNotificationCe
           let arguments = call.arguments as! [String: Any]
           klaviyo.set(phoneNumber: arguments["phoneNumber"] as! String)
           result("Phone updated")
-
-        case GET_NOTIFICATION_APP_LAUNCH_DETAILS_METHOD:
-          var notificationAppLaunchDetails: [String: Any] = [:]
-          notificationAppLaunchDetails["notificationLaunchedApp"] = self._isAppLaunchedFromNotification
-          notificationAppLaunchDetails["notificationResponse"] = self._receivedNotification
-          NSLog("KlaviyoFlutterPlugin: Notification app launch details: %@", notificationAppLaunchDetails)
-          result(notificationAppLaunchDetails)
 
         default:
           result(FlutterMethodNotImplemented)

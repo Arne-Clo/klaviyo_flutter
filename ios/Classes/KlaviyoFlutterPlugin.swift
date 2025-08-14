@@ -164,14 +164,52 @@ public class KlaviyoFlutterPlugin: NSObject, FlutterPlugin, UNUserNotificationCe
           result("Event: [\(event)] created")
         
         case METHOD_HANDLE_PUSH:
+          NSLog("KlaviyoFlutterPlugin: METHOD_HANDLE_PUSH called")
           let arguments = call.arguments as! [String: Any]
 
-          if let properties = arguments["message"] as? [String: Any],
-            let _ = properties["_k"] {
-              klaviyo.create(event: Event(name: .customEvent("$opened_push"), properties: properties))
-
+          if let properties = arguments["message"] as? [String: Any] {
+            
+            // Check if this is a Klaviyo push by looking for _k in the message
+            var isKlaviyoPush = false
+            var klaviyoIdentifier: Any? = nil
+            
+            // Check for _k directly in properties
+            if let kValue = properties["_k"] {
+              isKlaviyoPush = true
+              klaviyoIdentifier = kValue
+            }
+            // Or check for _k in body (as the deprecated method shows)
+            else if let body = properties["body"] as? [String: Any], let kValue = body["_k"] {
+              isKlaviyoPush = true
+              klaviyoIdentifier = kValue
+            }
+            
+            if isKlaviyoPush {
+              var eventProperties = properties
+              
+              // Add push token to event properties like Android does
+              if let pushToken = klaviyo.pushToken {
+                eventProperties["push_token"] = pushToken
+                NSLog("KlaviyoFlutterPlugin: Added push token to event properties")
+              } else {
+                NSLog("KlaviyoFlutterPlugin: No push token available")
+              }
+              
+              
+              // Use CustomEvent for push tracking since OpenedPush is not available
+              let event = Event(name: .customEvent("$opened_push"), properties: eventProperties)
+              
+              klaviyo.create(event: event)
+              NSLog("KlaviyoFlutterPlugin: Successfully sent $opened_push event to Klaviyo")
+              
               return result(true)
+            } else {
+              NSLog("KlaviyoFlutterPlugin: Not a Klaviyo push - no _k identifier found")
+            }
+          } else {
+            NSLog("KlaviyoFlutterPlugin: Failed to extract message properties from arguments")
           }
+          NSLog("KlaviyoFlutterPlugin: Returning false - push not handled")
           result(false)
 
         case METHOD_GET_EXTERNAL_ID:
@@ -264,6 +302,12 @@ public class KlaviyoFlutterPlugin: NSObject, FlutterPlugin, UNUserNotificationCe
           
           data[keyString] = value
       }
+      
+      // Check if data has "body" containing "_k" key and include "_k" in data if needed
+      if let body = data["body"] as? [String: Any], let kValue = body["_k"] {
+          data["_k"] = kValue
+      }
+      
       message["data"] = data
       
       if let apsDict = userInfo["aps"] as? [String: Any] {
